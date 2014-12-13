@@ -11,10 +11,13 @@ import struct
 import session
 import traceback
 import subprocess
+import time
 
 _here = os.path.dirname(__file__)
 SOCKET_NAME = os.path.join(_here, ".socket")
 PID_FILE = os.path.join(_here, "local_server.pid")
+
+SESSION_TIMEOUT = 600 # 10 minutes
 
 def _read_socket(socket):
     length, = struct.unpack("I", socket.recv(4))
@@ -30,6 +33,12 @@ class _Server():
         self.session = session.Session()
 
     def start(self):
+        self._mark_used()
+        self._open_connections = 0
+        thr = threading.Thread(target=self._check_timeout)
+        thr.daemon = True
+        thr.start()
+
         oldmask = os.umask(0o77)
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._sock.bind(SOCKET_NAME)
@@ -38,9 +47,22 @@ class _Server():
 
         while True:
             con, addr = self._sock.accept()
-            thread = threading.Thread(target=self._handle_connection, args=(con, addr))
-            thread.daemon = True
-            thread.start()
+            self._open_connections += 1
+            thr = threading.Thread(target=self._handle_connection, args=(con, addr))
+            thr.start()
+
+    def _check_timeout(self):
+        while True:
+            if self._open_connections > 0:
+                self._mark_used()
+            wait_time = self._last_use - time.time() + SESSION_TIMEOUT
+            if wait_time <= 0:
+                self.stop_server()
+            else:
+                time.sleep(wait_time)
+
+    def _mark_used(self):
+        self._last_use = time.time()
 
     def _handle_connection(self, connection, address):
         try:
@@ -55,6 +77,8 @@ class _Server():
                 _write_socket(connection, result)
         finally:
             connection.close()
+            self._open_connections -= 1
+            self._mark_used()
 
     def is_logged_in(self):
         return self.session.logged_in
