@@ -1,0 +1,3 @@
+[submodule "tacui"]
+	path = tacui
+	url = git@github.com:yawkat/tacui.git

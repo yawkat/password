@@ -1,0 +1,5 @@
+.socket
+db
+__pycache__/
+*.pid
+*.pyc
