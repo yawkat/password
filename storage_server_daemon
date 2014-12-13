@@ -1,0 +1,29 @@
+#!/bin/bash
+
+WORKDIR="/home/password/password"
+USER="password"
+PIDFILE="$WORKDIR/pid"
+PORT=8082
+
+start() {
+    echo "Starting password server..."
+    start-stop-daemon -S --chuid "$USER" --chdir "$WORKDIR" --background --make-pidfile --pidfile "$PIDFILE" --exec "$WORKDIR/storage_server.py" -- -p "$PORT"
+}
+stop() {
+    echo "Stopping password server..."
+    start-stop-daemon -K --pidfile "$PIDFILE"
+    sleep 2
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart)
+    stop
+    start
+    ;;
+esac
