@@ -101,7 +101,7 @@ class LocalCopyStorageProvider(StorageProvider):
     def load(self):
         try:
             val = self.upstream.load()
-            self.local.store(obj)
+            self.local.store(val)
             self.remote_success = True
             return val
         except:

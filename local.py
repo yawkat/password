@@ -30,4 +30,4 @@ class Client():
             if success:
                 return result
             else:
-                raise OSError(result.decode("utf-8"))
+                raise OSError(result)

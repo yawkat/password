@@ -23,6 +23,13 @@ sess = session.Session()
 sess.log_in(password, load=False)
 sess.init_empty()
 
+def add(name, password):
+    print("Adding %s..." % name)
+    if name in sess.list_password_names():
+        print("Duplicate name %s, merging" % name)
+        password = sess.get_password(name) + "\n###\n" + password
+    sess.add_password(name, password, save=False)
+
 for keepass2file in args.keepass2:
     with open(keepass2file) as f:
         doc = xmltodict.parse(f.read())
@@ -69,8 +76,7 @@ for keepass2file in args.keepass2:
                     continue
             name = "/".join(k)
             value = "\n".join(filter(lambda e: type(e) == str, (password, username, url, notes)))
-            print("Adding %s..." % name)
-            sess.add_password(name, value, save=False)
+            add(name, value)
         for group in get_list(element, "Group"):
             k = group["Name"]
             if k == "Recycle Bin":
