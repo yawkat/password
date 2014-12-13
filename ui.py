@@ -20,6 +20,12 @@ def _finish_setup():
     thread.start()
 
 def launch(first=True):
+    def stop(evt):
+        client.stop_server()
+        print("sysexit")
+        ui.exit()
+    ui.input.bind("<Control-c>", stop)
+
     ui.input.text = ""
     ui.clear()
     if not client.is_logged_in():

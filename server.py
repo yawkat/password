@@ -31,13 +31,13 @@ class _Server():
 
     def start(self):
         oldmask = os.umask(0o77)
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind(SOCKET_NAME)
-        sock.listen(1)
+        self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._sock.bind(SOCKET_NAME)
+        self._sock.listen(1)
         os.umask(oldmask)
 
         while True:
-            con, addr = sock.accept()
+            con, addr = self._sock.accept()
             thread = threading.Thread(target=self._handle_connection, args=(con, addr))
             thread.daemon = True
             thread.start()
@@ -70,6 +70,10 @@ class _Server():
 
     def get_password(self, name):
         return self.session.get_password(name)
+
+    def stop_server(self):
+        # clean shutdown, just stop accepting connections and exit when done
+        self._sock.shutdown(socket.SHUT_RDWR)
 
 def _run():
     our_pid = os.getpid()
