@@ -15,41 +15,54 @@ import traceback
 HASH = "SHA-512"
 
 def _readi(stream):
-    return struct.unpack("I", stream.read(4))[0]
+    return struct.unpack(">I", stream.read(4))[0]
 
 def _readblock(stream):
     block_length = _readi(stream)
     return stream.read(block_length)
 
 def _writei(stream, value):
-    stream.write(struct.pack("I", value))
+    stream.write(struct.pack(">I", value))
 
 def _writeblock(stream, block):
     _writei(stream, len(block))
     stream.write(block)
 
+class KeyExchange(storage.StorageTransformer):
+    def __init__(self, nxt, storage_provider):
+        super(KeyExchange, self).__init__(bytes, bytes, nxt)
+        self.storage_provider = storage_provider
+
+    def load(self):
+        data = super(KeyExchange, self).load()
+        f = io.BytesIO(data)
+        self.storage_provider.private_key = rsa.PrivateKey.load_pkcs1(_readblock(f), format="DER")
+        self.storage_provider.public_key = rsa.PublicKey.load_pkcs1(_readblock(f), format="DER")
+        return _readblock(f)
+
+    def store(self, obj):
+        if self.storage_provider.private_key is None:
+            self.storage_provider.public_key, self.storage_provider.private_key = rsa.newkeys(2048)
+
+        f = io.BytesIO()
+        _writeblock(f, self.storage_provider.private_key.save_pkcs1(format="DER"))
+        _writeblock(f, self.storage_provider.public_key.save_pkcs1(format="DER"))
+        _writeblock(f, obj)
+        super(KeyExchange, self).store(f.getvalue())
+
 class RemoteStorageProvider(storage.StorageProvider):
-    def __init__(self, address, password):
+    def __init__(self, address):
         super(RemoteStorageProvider, self).__init__(bytes)
         self.address = address
-        pw_hash = scrypt.hash(password, address)
-        seeded = random.Random()
-        seeded.seed(pw_hash)
-        def read_bytes(n):
-            s = bytearray()
-            for _ in range(n):
-                s.append(seeded.getrandbits(8))
-            return bytes(s)
-        key_pair = Crypto.PublicKey.RSA.generate(2048, randfunc=read_bytes)
-        self.public_key = rsa.PublicKey(key_pair.n, key_pair.e)
-        self.private_key = rsa.PrivateKey(key_pair.n, key_pair.e, key_pair.d, key_pair.p, key_pair.q)
+        self.private_key = None
+        self.public_key = None
 
     def load(self):
         return urllib.request.urlopen(self.address).read()
 
     def store(self, obj):
         f = io.BytesIO()
-        _writeblock(f, self.public_key.save_pkcs1())
+        _writeblock(f, self.public_key.save_pkcs1(format="DER"))
         _writeblock(f, rsa.sign(obj, self.private_key, HASH))
         _writeblock(f, obj)
         request = urllib.request.Request(self.address, data=f.getvalue(), method="PUT")
@@ -74,7 +87,7 @@ def start_server(address, port, data_file):
             try:
                 nonlocal public_key, data
 
-                r_public_key = rsa.PublicKey.load_pkcs1(_readblock(self.rfile))
+                r_public_key = rsa.PublicKey.load_pkcs1(_readblock(self.rfile), format="DER")
                 r_signature = _readblock(self.rfile)
                 r_message = _readblock(self.rfile)
 

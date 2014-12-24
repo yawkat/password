@@ -4,11 +4,12 @@ from storage import *
 import storage_server
 
 def build_storage_pipeline(password):
-    remote = storage_server.RemoteStorageProvider("http://pw.yawk.at", password)
+    remote = storage_server.RemoteStorageProvider("http://pw.yawk.at")
     local = FileStorageProvider("db")
 
     pipe = LocalCopyStorageProvider(remote, local)
-    pipe = ScryptStorageTransformer(pipe, password)
+    pipe = ScryptAESStorageTransformer(pipe, password)
+    pipe = storage_server.KeyExchange(pipe, remote)
     pipe = GzipTransformer(pipe)
     pipe = StringEncoder(pipe)
     pipe = JsonStorageTransformer(pipe)
