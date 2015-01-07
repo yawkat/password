@@ -46,6 +46,7 @@ class _Server():
         os.umask(oldmask)
 
         while True:
+            print("accept")
             con, addr = self._sock.accept()
             self._open_connections += 1
             thr = threading.Thread(target=self._handle_connection, args=(con, addr))
@@ -98,6 +99,9 @@ class _Server():
     def stop_server(self):
         # clean shutdown, just stop accepting connections and exit when done
         self._sock.shutdown(socket.SHUT_RDWR)
+
+    def is_persistent(self):
+        return self.session.persistent
 
 def _run():
     our_pid = os.getpid()

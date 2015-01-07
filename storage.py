@@ -18,6 +18,10 @@ class StorageProvider(object):
     def store(self, obj):
         pass
 
+    @property
+    def persistent(self):
+        return True
+
 class StorageTransformer(StorageProvider):
     def __init__(self, input_type, output_type, nxt):
         super(StorageTransformer, self).__init__(input_type)
@@ -32,6 +36,10 @@ class StorageTransformer(StorageProvider):
 
     def store(self, obj):
         return self._nxt.store(obj)
+
+    @property
+    def persistent(self):
+        return self._nxt.persistent
 
 class StringEncoder(StorageTransformer):
     def __init__(self, nxt):
@@ -158,3 +166,7 @@ class LocalCopyStorageProvider(StorageProvider):
             raise Exception("Remote load was not successful, not saving!")
         self.local.store(obj)
         self.upstream.store(obj)
+
+    @property
+    def persistent(self):
+        return self.remote_success and self.upstream.persistent

@@ -18,6 +18,10 @@ class Session:
     def logged_in(self):
         return self.data is not None
 
+    @property
+    def persistent(self):
+        return self.pipeline.persistent
+
     def log_in(self, password, load=True):
         self.pipeline = config.build_storage_pipeline(password)
         if load:

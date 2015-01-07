@@ -44,8 +44,12 @@ def launch(first=True):
         ui.input.enter = login
         return
 
+    if client.is_persistent():
+        prefix = "> "
+    else:
+        prefix = "! "
     ui.input.enabled = True
-    ui.input.decorate = lambda text: "> " + text
+    ui.input.decorate = lambda text: prefix + text
     def may_show(text):
         text = text.lower()
         search = ui.input.text.lower()
